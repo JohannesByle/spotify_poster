@@ -63,7 +63,7 @@ def get_album_data(album_count):
         if song_data is not None:
             album_name = song_data["album"]["name"]
             url = song_data["album"]["images"][0]["url"]
-            file = url.split("/")[-1] + ".jpg"
+            file = url.split("/")[-1] + ".png"
             if not os.path.exists(os.path.join(path, "cache/album_art", file)):
                 urlretrieve(url, os.path.join(path, "cache/album_art", file))
             if album_name not in album_names:
