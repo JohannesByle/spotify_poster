@@ -4,3 +4,5 @@
 /posters/
 /cache/
 /my_config.py
+/.idea/
+/__pycache__/
