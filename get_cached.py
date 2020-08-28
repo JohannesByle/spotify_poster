@@ -4,10 +4,11 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from requests.exceptions import ReadTimeout
 import time
-from config import manual_includes, special_rules, genre_tags
+from config import special_rules
 from urllib.request import urlretrieve
 from tqdm import tqdm
 import json
+import pickle
 
 path = os.path.dirname(__file__)
 data_path = os.path.join(path, "cache")
@@ -79,7 +80,12 @@ def get_song(artist, song):
         return None
 
 
-def get_album_data(album_count):
+def get_album_data(album_count, genre_tags=None, manual_includes=None):
+    if genre_tags is None:
+        genre_tags = []
+    if manual_includes is None:
+        manual_includes = []
+
     # Make sure save locations exist
     if not os.path.exists(os.path.join(path, "cache/album_art")):
         os.mkdir(os.path.join(path, "cache/album_art"))
@@ -91,17 +97,28 @@ def get_album_data(album_count):
     else:
         failed_songs = []
 
-    # Load spotify listening data from disk
-    streaming_data = pd.DataFrame()
-    for file in os.listdir(spotify_data_path):
-        if file.startswith("StreamingHistory"):
-            with open(os.path.join(spotify_data_path, file), "r") as f:
-                streaming_data = streaming_data.append(pd.DataFrame(json.load(f)))
-    streaming_data = streaming_data.reset_index(drop=True)
+    if not os.path.exists(os.path.join(os.path.join(path, "cache/MyData.p"))):
+        # Load spotify listening data from disk
+        streaming_data = pd.DataFrame()
+        for file in os.listdir(spotify_data_path):
+            if file.startswith("StreamingHistory"):
+                with open(os.path.join(spotify_data_path, file), "r", encoding="UTF") as f:
+                    streaming_data = streaming_data.append(pd.DataFrame(json.load(f)))
+        streaming_data = streaming_data.reset_index(drop=True)
+
+        # Sort songs by total listen time
+        value_counts = streaming_data["trackName"].value_counts()
+        for song in tqdm(value_counts.index, desc="Sorting songs"):
+            value_counts[song] = streaming_data[streaming_data["trackName"] == song]["msPlayed"].sum()
+        value_counts = value_counts.sort_values(ascending=False)
+        with open(os.path.join(os.path.join(path, "cache/MyData.p")), "wb") as f:
+            pickle.dump((streaming_data, value_counts), f)
+    else:
+        with open(os.path.join(os.path.join(path, "cache/MyData.p")), "rb") as f:
+            streaming_data, value_counts = pickle.load(f)
 
     # Loop through most listened to songs to get most listened to albums
     album_data = pd.DataFrame(columns=["name", "file", "count"])
-    value_counts = streaming_data["trackName"].value_counts()
     pbar = tqdm(total=album_count, desc="Getting albums")
     for song in value_counts.index:
         artist = streaming_data[streaming_data["trackName"] == song].reset_index().loc[0, "artistName"]
@@ -118,7 +135,10 @@ def get_album_data(album_count):
             continue
         song_data = get_song(artist, song)
         if song_data is not None:
+
             album_name = song_data["album"]["name"]
+            print(song)
+            print(album_name)
             url = song_data["album"]["images"][0]["url"]
             file = url.split("/")[-1] + ".png"
             if not os.path.exists(os.path.join(path, "cache/album_art", file)):
