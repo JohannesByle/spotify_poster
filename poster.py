@@ -1,6 +1,7 @@
 from PIL import Image
 from tqdm import tqdm
 import os
+import matplotlib.pyplot as plt
 from positions_functions import sequential, rand
 import numpy as np
 from get_cached import get_album_data
@@ -17,8 +18,6 @@ class Poster:
         self.album_data = None
         self.size = None
         self.album_sizes = None
-        self.genre_tags = None
-        self.manual_includes = None
 
     def roughly_proportional(self, num_sizes: int = 3, size_x: int = 6, size_y: int = 8) -> None:
         """
@@ -64,8 +63,11 @@ class Poster:
         :return: None
         """
         from rpack import pack, enclosing_size
-        album_data = get_album_data(album_count, genre_tags=self.genre_tags, manual_includes=self.manual_includes)
-        album_sizes = np.log(np.array(album_data["count"]))
+        if self.album_data is None or len(self.album_data.index) < album_count:
+            album_data = get_album_data(album_count)
+        else:
+            album_data = self.album_data
+        album_sizes = np.log(np.array(album_data["msPlayed"]))
         album_sizes = (album_sizes / min(album_sizes)) * min_size
         album_sizes = [(int(n), int(n)) for n in album_sizes]
         new_poss = pack(album_sizes)
@@ -102,7 +104,7 @@ class Poster:
         from matplotlib.cm import get_cmap
         if self.images is None:
             self.load_images()
-        album_counts = np.array([np.log(n) for n in self.album_data["count"].values])
+        album_counts = np.array([np.log(n) for n in self.album_data["msPlayed"].values])
         cm = get_cmap(colormap)
         colors = (album_counts - min(album_counts)) / (max(album_counts) - min(album_counts))
         for n in range(len(self.images)):
@@ -118,10 +120,9 @@ class Poster:
         if self.album_data is None:
             if self.positions is None:
                 raise Exception("album_data not yet loaded")
-            self.album_data = get_album_data(len(self.positions), genre_tags=self.genre_tags,
-                                             manual_includes=self.manual_includes)
+            self.album_data = get_album_data(len(self.positions))
         self.images = []
-        for n in range(len(self.album_data.index)):
+        for n in range(len(self.positions)):
             file = self.album_data.iloc[n, list(self.album_data.columns).index("file")]
             image = Image.open(os.path.join(path, "cache/album_art", file))
             if self.album_sizes is not None:
@@ -135,8 +136,7 @@ class Poster:
         if self.positions is None:
             self.positions = sequential()
         if self.album_data is None:
-            self.album_data = get_album_data(len(self.positions), genre_tags=self.genre_tags,
-                                             manual_includes=self.manual_includes)
+            self.album_data = get_album_data(len(self.positions))
         if self.images is None:
             self.load_images()
         new_image = Image.new(mode="RGB", size=self.size)
