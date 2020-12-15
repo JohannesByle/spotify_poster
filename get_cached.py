@@ -26,14 +26,16 @@ songs = pd.read_json(data_path + "/song_data.json")
 def spotify_search(query, query_type):
     while True:
         try:
-            data = spotify.search(query, type=query_type)[query_type + "s"]["items"][0]
+            data = spotify.search(query, type=query_type, market="US")[query_type + "s"]["items"][0]
             return data
         except ReadTimeout:
             time.sleep(1)
             continue
         except IndexError:
-            print("No results found: " + query)
             return None
+
+
+dropped_songs = []
 
 
 def get_song(artist, song):
@@ -49,6 +51,9 @@ def get_song(artist, song):
         global songs
         track = spotify_search("artist:{} track:{}".format(artist, song), "track")
         if track is None:
+            track = spotify_search("episode: {}".format(song), query_type="episode")
+            if track is None:
+                print("\nNo results found: {}, {}".format(artist, song))
             return track
         song_data = pd.Series(track, name=track["id"])
         artist_data = []
