@@ -6,6 +6,7 @@ from positions_functions import sequential, rand
 import numpy as np
 from get_cached import get_album_data
 import random
+import pandas as pd
 
 path = os.path.dirname(__file__)
 
@@ -67,7 +68,7 @@ class Poster:
             album_data = get_album_data(album_count)
         else:
             album_data = self.album_data
-        album_sizes = np.log(np.array(album_data["msPlayed"]))
+        album_sizes = album_data["msPlayed"].astype(float)
         album_sizes = (album_sizes / min(album_sizes)) * min_size
         album_sizes = [(int(n), int(n)) for n in album_sizes]
         new_poss = pack(album_sizes)
