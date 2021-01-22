@@ -74,7 +74,9 @@ def get_song(artist, song):
         return None
 
 
-def get_album_data(album_count):
+def get_album_data(album_count, genre_tags=None):
+    if genre_tags is None:
+        genre_tags = []
     # Make sure save locations exist
     if not os.path.exists(os.path.join(path, "cache/album_art")):
         os.mkdir(os.path.join(path, "cache/album_art"))
@@ -101,8 +103,9 @@ def get_album_data(album_count):
         if song in special_rules:
             song = special_rules[song]
         song_data = get_song(artist, song)
-
         if song_data is not None:
+            if genre_tags and not [n for n in genre_tags if n in str(song_data["artist_data"][0]["genres"])]:
+                continue
             album_name = song_data["album"]["name"]
             url = song_data["album"]["images"][0]["url"]
             file = url.split("/")[-1] + ".tiff"

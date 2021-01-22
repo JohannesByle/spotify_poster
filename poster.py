@@ -13,12 +13,13 @@ path = os.path.dirname(__file__)
 
 class Poster:
 
-    def __init__(self):
+    def __init__(self, genre_tags=None):
         self.images = None
         self.positions = None
         self.album_data = None
         self.size = None
         self.album_sizes = None
+        self.genre_tags = genre_tags
 
     def roughly_proportional(self, num_sizes: int = 3, size_x: int = 6, size_y: int = 8) -> None:
         """
@@ -65,7 +66,7 @@ class Poster:
         """
         from rpack import pack, enclosing_size
         if self.album_data is None or len(self.album_data.index) < album_count:
-            album_data = get_album_data(album_count)
+            album_data = get_album_data(album_count, genre_tags=self.genre_tags)
         else:
             album_data = self.album_data
         album_sizes = np.sqrt(album_data["msPlayed"].astype(float) + 1)
@@ -121,7 +122,7 @@ class Poster:
         if self.album_data is None:
             if self.positions is None:
                 raise Exception("album_data not yet loaded")
-            self.album_data = get_album_data(len(self.positions))
+            self.album_data = get_album_data(len(self.positions), genre_tags=self.genre_tags)
         self.images = []
         for n in range(len(self.positions)):
             file = self.album_data.iloc[n, list(self.album_data.columns).index("file")]
@@ -137,7 +138,7 @@ class Poster:
         if self.positions is None:
             self.positions = sequential()
         if self.album_data is None:
-            self.album_data = get_album_data(len(self.positions))
+            self.album_data = get_album_data(len(self.positions), genre_tags=self.genre_tags)
         if self.images is None:
             self.load_images()
         new_image = Image.new(mode="RGB", size=self.size)
