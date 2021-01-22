@@ -155,6 +155,9 @@ class Poster:
             new_filename = os.path.join(poster_path, new_filename)
             if not os.path.exists(new_filename + ".png"):
                 new_image.save(new_filename + ".png")
+                s = 2560 / max(new_image.size)
+                if s < 1:
+                    new_image.resize(size=[int(n * s) for n in new_image.size]).save(new_filename + "_resized.png")
                 file_saved = True
             else:
                 n += 1
