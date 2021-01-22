@@ -68,8 +68,8 @@ class Poster:
             album_data = get_album_data(album_count)
         else:
             album_data = self.album_data
-        album_sizes = album_data["msPlayed"].astype(float)
-        album_sizes = (album_sizes / min(album_sizes)) * min_size
+        album_sizes = np.sqrt(album_data["msPlayed"].astype(float) + 1)
+        album_sizes = album_sizes / min(album_sizes) * min_size
         album_sizes = [(int(n), int(n)) for n in album_sizes]
         new_poss = pack(album_sizes)
         self.album_data = album_data
