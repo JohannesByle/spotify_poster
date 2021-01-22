@@ -12,5 +12,5 @@ Functions for turning your spotify data into a poster of your most listened to a
 ## Examples
 1. Poster with random positions and sizes roughly proportional to listening time
 ![Johannes-13_resized](https://user-images.githubusercontent.com/50871836/105508560-ca2d9200-5ccc-11eb-83e8-a298bfe670ef.png)
-2. Poster with sizes exactly proportional to size
+2. Poster with sizes exactly proportional to listening time
 ![Johannes-16](https://user-images.githubusercontent.com/50871836/105535573-4d5fdf80-5cef-11eb-8b82-e2917b9e6ebe.png)
