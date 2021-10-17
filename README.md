@@ -1,5 +1,5 @@
 # spotify_poster
-Functions for turning your Spotify data into a poster of your most listened to albums or artists, and other cool data analysis of your listening patterns
+Functions for turning your Spotify data into a poster of your most listened to albums or artists, as well as other cool data analysis of your listening patterns
 
 <img src="https://user-images.githubusercontent.com/50871836/105508560-ca2d9200-5ccc-11eb-83e8-a298bfe670ef.png" height="400"> <img src="https://user-images.githubusercontent.com/50871836/105535573-4d5fdf80-5cef-11eb-8b82-e2917b9e6ebe.png" height="400"> <img src="https://user-images.githubusercontent.com/50871836/137612315-fa0c15be-e803-4a8c-9940-698b568ad51f.png" height="400">
 
