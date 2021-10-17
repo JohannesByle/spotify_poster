@@ -9,7 +9,8 @@ Functions for turning your Spotify data into a poster of your most listened to a
     1. Album sizes directly proportional to listen time.
     2. Album sized roughly proportional to listen time but evenly spaced.
     3. Apply a color filter to each poster propotional to listen time.
-    4. Order albums in multiple different ways: distance from point, manhattan distance from point, sequential, random etc.
+    4. Sort albums by average color of the album art
+    5. Order albums in multiple different ways: distance from point, manhattan distance from point, sequential, random etc.
 3. Easily extensible. Have an idea for a poster you want to mak
 e, simply add a function to the `Poster` class.
 4. Create a network graphs like the one below of your artists to identify genres and connections
