@@ -113,4 +113,5 @@ def plotly_graph_pandas(df, cm="hsv"):
                     )
     pio.write_image(fig, os.path.join(path, "posters/network_graph.png"), width=int(1920 * 0.5), height=int(1080 * 0.5),
                     scale=5)
+    pio.write_html(fig, os.path.join(path, "posters/network_graph.html"))
     fig.show()
