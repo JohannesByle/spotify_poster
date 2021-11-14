@@ -1,0 +1,11 @@
+colorutils
+kaleido
+matplotlib
+networkx
+numpy
+pandas
+Pillow
+plotly
+requests
+spotipy
+tqdm
