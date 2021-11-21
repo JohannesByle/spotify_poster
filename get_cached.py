@@ -74,6 +74,16 @@ def get_song(artist, song):
         return None
 
 
+def load_streaming_data():
+    # Load spotify listening data from disk
+    streaming_data = pd.DataFrame()
+    for file in os.listdir(spotify_data_path):
+        if file.startswith("StreamingHistory"):
+            with open(os.path.join(spotify_data_path, file), "r", encoding="UTF") as f:
+                streaming_data = streaming_data.append(pd.DataFrame(json.load(f)))
+    return streaming_data.reset_index(drop=True)
+
+
 def get_album_data(album_count, genre_tags=None):
     if genre_tags is None:
         genre_tags = []
@@ -81,14 +91,7 @@ def get_album_data(album_count, genre_tags=None):
     if not os.path.exists(os.path.join(path, "cache/album_art")):
         os.mkdir(os.path.join(path, "cache/album_art"))
 
-    # Load spotify listening data from disk
-    streaming_data = pd.DataFrame()
-    for file in os.listdir(spotify_data_path):
-        if file.startswith("StreamingHistory"):
-            with open(os.path.join(spotify_data_path, file), "r", encoding="UTF") as f:
-                streaming_data = streaming_data.append(pd.DataFrame(json.load(f)))
-    streaming_data = streaming_data.reset_index(drop=True)
-
+    streaming_data = load_streaming_data()
     streaming_data['msPlayed'] = streaming_data.groupby(['trackName', 'artistName'])['msPlayed'].transform('sum')
     streaming_data = streaming_data[['artistName', 'trackName', 'msPlayed']].drop_duplicates().reset_index(drop=True)
     streaming_data = streaming_data.sort_values(by="msPlayed", ascending=False)
