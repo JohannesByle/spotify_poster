@@ -62,13 +62,12 @@ def get_song(artist, song):
         song_data["artist_data"] = artist_data
         songs = songs.append(song_data)
         songs = songs.loc[~songs.index.duplicated(keep='first')]
-        songs.to_json(data_path + "/song_data.json")
-        return pd.DataFrame(song_data).iloc[0]
+        songs.to_json(data_path + "/song_data.json", indent=4)
+        return songs[song_data.keys()[0]]
 
     if possible_songs.empty:
         possible_songs = album_search()
     if isinstance(possible_songs, pd.DataFrame):
-
         return possible_songs.iloc[0]
     else:
         return None
@@ -91,6 +90,7 @@ def get_album_data(album_count, genre_tags=None):
     if not os.path.exists(os.path.join(path, "cache/album_art")):
         os.mkdir(os.path.join(path, "cache/album_art"))
 
+    # Load streaming data from MyData
     streaming_data = load_streaming_data()
     streaming_data['msPlayed'] = streaming_data.groupby(['trackName', 'artistName'])['msPlayed'].transform('sum')
     streaming_data = streaming_data[['artistName', 'trackName', 'msPlayed']].drop_duplicates().reset_index(drop=True)
