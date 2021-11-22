@@ -9,6 +9,9 @@ import random
 import pandas as pd
 
 path = os.path.dirname(__file__)
+poster_path = os.path.join(os.path.dirname(__file__), "posters")
+if not os.path.exists(poster_path):
+    os.mkdir(poster_path)
 
 
 class Poster:
@@ -145,9 +148,6 @@ class Poster:
         for n in range(len(self.images)):
             new_image.paste(self.images[n], self.positions[n])
         filename = filename.split(".")[0]
-        poster_path = os.path.join(os.path.dirname(__file__), "posters")
-        if not os.path.exists(poster_path):
-            os.mkdir(poster_path)
         file_saved = False
         n = 0
         new_filename = filename
