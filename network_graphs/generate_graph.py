@@ -6,8 +6,15 @@ from matplotlib.cm import get_cmap
 from colorutils import Color
 import plotly.io as pio
 import os
-from get_cached import path
 import kaleido
+from generate_data import get_genre_terms, get_artists_network
+import scipy
+import numpy as np
+
+path = os.path.dirname(__file__)
+out_path = os.path.join(path, "graphs")
+if not os.path.exists(out_path):
+    os.mkdir(out_path)
 
 
 def flatten_lists(data):
@@ -35,33 +42,31 @@ def generate_graph_networkx(data, graph=None):
     return g, nx.spring_layout(g)
 
 
-def plotly_graph_pandas(df, cm="hsv"):
-    graph = {df.loc[n, "node"]: df.loc[n, "edges"] for n in df["node"]}
+def generate_plotly_graph(num_terms=5, num_points=100, cm="viridis", min_size=25, max_size=30):
+    genre_terms = get_genre_terms(num_terms=num_terms)
+    df = get_artists_network()
+    df = df[df["edges"].apply(lambda x: len(x) != 0)]
+    df = df.sort_values("duration_ms", ascending=False).iloc[:num_points]
+    graph = {n: [i for i in df.loc[n, "edges"] if i in df.index] for n in df.index}
     g, pos = generate_graph_networkx(None, graph=graph)
+    c_map = get_cmap(cm)
 
-    cmap = get_cmap(cm)
-    categories = list(flatten_lists(df["category"]))
+    def resize(n, data):
+        return min_size + (max_size - min_size) * ((n - min(data)) / (max(data) - min(data)))
 
-    def get_color(cats):
-        color = Color()
-        for cat in cats:
-            if not cat:
-                new_color = cmap(0.5)
-            else:
-                new_color = cmap(categories.index(cat) / len(categories))[:3]
-            color += Color([n * 255 for n in new_color])
-        return "rgb({})".format(",".join([str(round(n / 255, 5)) for n in color]))
+    df["size"] = resize(df["duration_ms"], df["duration_ms"])
+    df[[f"{term}_size" for term in genre_terms]] = None
+    current_size = df["size"].copy()
+    for term in genre_terms:
+        rows = df["genres"].apply(lambda x: any([term in genre.split() for genre in x]))
+        current_size.loc[rows] *= 0.75
+        df.loc[rows, f"{term}_size"] = current_size
+        df.loc[~rows, f"{term}_size"] = np.nan
 
-    df["color"] = df["category"].apply(lambda x: get_color(x))
-
-    def add_scatter(sub_df, cat, min_size=10, max_size=30):
-
-        def resize(n, data):
-            return min_size + (max_size - min_size) * ((n - min(data)) / (max(data) - min(data)))
-
+    def add_scatter(df_, label, color, add_text=True, alpha=1.0):
         node_x = []
         node_y = []
-        for node in sub_df["node"]:
+        for node in df_.index:
             x, y = pos[node]
             node_x.append(x)
             node_y.append(y)
@@ -69,22 +74,26 @@ def plotly_graph_pandas(df, cm="hsv"):
             x=node_x, y=node_y,
             mode='markers',
             hoverinfo='text',
-            name=cat,
+            name=label,
             marker=dict(
-                color=sub_df.iloc[0]["color"],
+                color=f"rgba({','.join([str(round(n, 5)) for n in color[:3]] + [str(alpha)])})",
                 size=10,
                 line_width=2),
             showlegend=True)
-        node_trace.text = list(sub_df["node"])
-        num_connections = sub_df["edges"].apply(lambda x: len(x))
-        node_trace.marker.size = [resize(n, df["edges"].apply(lambda x: len(x))) for n in num_connections]
+        if add_text:
+            node_trace.text = list(df_["name"] + ": {" + df_["genres"].apply(lambda x_: ", ".join(x_)) + "}")
+        node_trace.marker.size = list(df_["size"])
+        node_trace.marker.line.width = 0
         return node_trace
 
     node_scatter = []
-    n = 0
-    for cat in pd.unique(df["category"].astype(str)):
-        n += len(df[df["category"].astype(str) == cat].index)
-        node_scatter += [add_scatter(df[df["category"].astype(str) == cat], cat)]
+    for n, term in enumerate(genre_terms):
+        sub_df = df.copy()
+        sub_df = sub_df[~pd.isna(sub_df[f"{term}_size"])]
+        sub_df["size"] = sub_df[f"{term}_size"]
+        node_scatter += [add_scatter(sub_df, label=term, color=c_map(n / len(genre_terms)), add_text=False)]
+    df["size"] = df["size"] * 0.5
+    node_scatter += [add_scatter(df, label="All", color=(0, 0, 0), alpha=0.1)]
 
     edge_x = []
     edge_y = []
@@ -111,7 +120,7 @@ def plotly_graph_pandas(df, cm="hsv"):
                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                     )
-    pio.write_image(fig, os.path.join(path, "posters/network_graph.png"), width=int(1920 * 0.5), height=int(1080 * 0.5),
+    pio.write_image(fig, os.path.join(out_path, "network_graph.png"), width=int(1920 * 0.5), height=int(1080 * 0.5),
                     scale=5)
-    pio.write_html(fig, os.path.join(path, "posters/network_graph.html"))
+    pio.write_html(fig, os.path.join(out_path, "network_graph.html"))
     fig.show()

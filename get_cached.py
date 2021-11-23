@@ -11,16 +11,21 @@ import json
 from urllib.parse import quote
 
 path = os.path.dirname(__file__)
-data_path = os.path.join(path, "cache")
-if not os.path.exists(data_path):
-    os.mkdir(data_path)
+cache_path = os.path.join(path, "cache")
+if not os.path.exists(cache_path):
+    os.mkdir(cache_path)
 spotify_data_path = os.path.join(path, "MyData")
 if not os.path.exists(spotify_data_path):
     raise Exception("Cannot find spotify data, make sure you are in a directory containing the spotify MyData folder")
 spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
-if not os.path.exists(data_path + "/song_data.json"):
-    pd.DataFrame().to_json(data_path + "/song_data.json")
-songs = pd.read_json(data_path + "/song_data.json")
+song_data_path = os.path.join(cache_path, "song_data.json")
+if not os.path.exists(song_data_path):
+    pd.DataFrame().to_json(song_data_path)
+missing_songs_path = os.path.join(cache_path, "missing_songs.json")
+if not os.path.exists(missing_songs_path):
+    with open(missing_songs_path, "w") as f:
+        json.dump([], f)
+songs = pd.read_json(song_data_path)
 
 
 def spotify_search(query, query_type):
@@ -38,7 +43,7 @@ def spotify_search(query, query_type):
 dropped_songs = []
 
 
-def get_song(artist, song):
+def get_song(artist, song, silent=False):
     global songs
     possible_songs = pd.DataFrame()
     if not songs.empty:
@@ -48,12 +53,20 @@ def get_song(artist, song):
                 possible_songs.drop(index)
 
     def album_search():
+        with open(missing_songs_path, "r") as f:
+            missing_songs = json.load(f)
+        if [n for n in missing_songs if n[0] == artist and n[1] == song]:
+            return
         global songs
         track = spotify_search("artist:{} track:{}".format(artist, song), "track")
         if track is None:
             track = spotify_search("episode: {}".format(song), query_type="episode")
             if track is None:
-                print("\nNo results found: {}, {}".format(artist, song))
+                if not silent:
+                    print("\nNo results found: {}, {}".format(artist, song))
+                missing_songs += [[artist, song]]
+                with open(missing_songs_path, "w") as f:
+                    json.dump(missing_songs, f)
             return track
         song_data = pd.Series(track, name=track["id"])
         artist_data = []
@@ -62,7 +75,7 @@ def get_song(artist, song):
         song_data["artist_data"] = artist_data
         songs = songs.append(song_data)
         songs = songs.loc[~songs.index.duplicated(keep='first')]
-        songs.to_json(data_path + "/song_data.json", indent=4)
+        songs.to_json(song_data_path, indent=4)
         return songs[song_data.keys()[0]]
 
     if possible_songs.empty:
