@@ -42,12 +42,13 @@ def generate_graph_networkx(data, graph=None):
     return g, nx.spring_layout(g)
 
 
-def generate_plotly_graph(num_terms=5, num_points=100, cm="viridis", min_size=25, max_size=30):
+def generate_plotly_graph(num_terms=5, num_points=100, cm="plasma", min_size=20, max_size=40):
     genre_terms = get_genre_terms(num_terms=num_terms)
     df = get_artists_network()
-    df = df[df["edges"].apply(lambda x: len(x) != 0)]
     df = df.sort_values("duration_ms", ascending=False).iloc[:num_points]
-    graph = {n: [i for i in df.loc[n, "edges"] if i in df.index] for n in df.index}
+    df["edges"] = df["edges"].apply(lambda x: set([n for n in x if n in df.index]))
+    df = df[df["edges"].apply(lambda x: len(x) != 0)]
+    graph = {n: df.loc[n, "edges"] for n in df.index}
     g, pos = generate_graph_networkx(None, graph=graph)
     c_map = get_cmap(cm)
 
@@ -59,9 +60,9 @@ def generate_plotly_graph(num_terms=5, num_points=100, cm="viridis", min_size=25
     current_size = df["size"].copy()
     for term in genre_terms:
         rows = df["genres"].apply(lambda x: any([term in genre.split() for genre in x]))
-        current_size.loc[rows] *= 0.75
         df.loc[rows, f"{term}_size"] = current_size
         df.loc[~rows, f"{term}_size"] = np.nan
+        current_size.loc[rows] *= 0.6
 
     def add_scatter(df_, label, color, add_text=True, alpha=1.0):
         node_x = []
@@ -92,8 +93,10 @@ def generate_plotly_graph(num_terms=5, num_points=100, cm="viridis", min_size=25
         sub_df = sub_df[~pd.isna(sub_df[f"{term}_size"])]
         sub_df["size"] = sub_df[f"{term}_size"]
         node_scatter += [add_scatter(sub_df, label=term, color=c_map(n / len(genre_terms)), add_text=False)]
-    df["size"] = df["size"] * 0.5
-    node_scatter += [add_scatter(df, label="All", color=(0, 0, 0), alpha=0.1)]
+    df["size"] = df["size"]
+    rows = pd.notna(df[[f"{term}_size" for term in genre_terms]]).sum(axis=1).astype(bool)
+    node_scatter += [add_scatter(df[~rows], label="Other", color=(0, 0, 0), alpha=1)]
+    node_scatter += [add_scatter(df[rows], label="", color=(0, 0, 0), alpha=0.0)]
 
     edge_x = []
     edge_y = []
@@ -109,9 +112,10 @@ def generate_plotly_graph(num_terms=5, num_points=100, cm="viridis", min_size=25
 
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y,
-        line=dict(width=0.5, color='#888'),
+        line=dict(width=1, color='#888'),
         hoverinfo='none',
-        mode='lines')
+        mode='lines',
+        name="Connections")
     fig = go.Figure(data=[edge_trace] + node_scatter,
                     layout=go.Layout(
                         showlegend=True,
