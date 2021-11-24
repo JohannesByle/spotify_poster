@@ -29,14 +29,21 @@ def get_artists_network():
             name, id_ = artist["name"], artist["id"]
             genres = set([apply_custom_rules(genre) for genre in artist["genres"]])
             edges = {a["id"] for a in song["artist_data"] if a["id"] != artist["id"]}
+            weights = {edge: 1 for edge in edges}
             if artist["type"] != "artist" or not genres:
                 continue
             if id_ in artists_dict:
                 assert artists_dict[id_]["genres"] == genres and artists_dict[id_]["name"] == name
                 artists_dict[id_]["duration_ms"] += song["duration_ms"]
                 artists_dict[id_]["edges"] = artists_dict[id_]["edges"].union(edges)
+                for edge in edges:
+                    artists_dict[id_]["weights"][edge] = artists_dict[id_]["weights"].get(edge, 0) + 1
                 continue
-            artists_dict[id_] = {"genres": genres, "name": name, "edges": edges, "duration_ms": song["duration_ms"]}
+            artists_dict[id_] = {"genres": genres,
+                                 "name": name,
+                                 "edges": edges,
+                                 "duration_ms": song["duration_ms"],
+                                 "weights": weights}
     for id_ in artists_dict:
         artists_dict[id_]["edges"] = [n for n in artists_dict[id_]["edges"] if n in artists_dict]
     artists_dict = pd.DataFrame(artists_dict).transpose()

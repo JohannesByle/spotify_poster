@@ -30,26 +30,39 @@ def generate_graph_dict(data):
     return graph
 
 
-def generate_graph_networkx(data, graph=None):
+def generate_graph_networkx(data, graph=None, iterations=100):
     if not graph:
         graph = generate_graph_dict(data)
     g = nx.Graph()
     for k, vs in graph.items():
-        g.add_edge(k, k)
-        for v in vs:
+        # g.add_edge(k, k)
+        for v in vs["edges"]:
             if v in list(graph):
-                g.add_edge(k, v)
-    return g, nx.spring_layout(g)
+                g.add_edge(k, v, weight=vs["weights"][v])
+    return g, nx.spring_layout(g, iterations=iterations)
 
 
-def generate_plotly_graph(num_terms=5, num_points=100, cm="plasma", min_size=20, max_size=40):
+def generate_plotly_graph(num_terms=5, num_points=100, cm="plasma", min_size=10, max_size=40, iterations=100,
+                          artist=None):
+    artist_id = None
     genre_terms = get_genre_terms(num_terms=num_terms)
     df = get_artists_network()
+    if artist:
+        num_points = len(df)
     df = df.sort_values("duration_ms", ascending=False).iloc[:num_points]
+    if artist:
+        artist_id = df[df["name"] == artist].index
+        if len(artist_id) > 1:
+            raise Exception("Non-unique artist name")
+        artist_id = artist_id[0]
     df["edges"] = df["edges"].apply(lambda x: set([n for n in x if n in df.index]))
     df = df[df["edges"].apply(lambda x: len(x) != 0)]
-    graph = {n: df.loc[n, "edges"] for n in df.index}
-    g, pos = generate_graph_networkx(None, graph=graph)
+    graph = {n: {"edges": df.loc[n, "edges"], "weights": df.loc[n, "weights"]} for n in df.index}
+    g, pos = generate_graph_networkx(None, graph=graph, iterations=iterations)
+    if artist_id:
+        remove_nodes = [n for n in g.nodes if not nx.has_path(g, n, artist_id)]
+        [g.remove_node(n) for n in remove_nodes]
+        df = df.loc[list(g.nodes)]
     c_map = get_cmap(cm)
 
     def resize(n, data):
@@ -97,26 +110,32 @@ def generate_plotly_graph(num_terms=5, num_points=100, cm="plasma", min_size=20,
     rows = pd.notna(df[[f"{term}_size" for term in genre_terms]]).sum(axis=1).astype(bool)
     node_scatter += [add_scatter(df[~rows], label="Other", color=(0, 0, 0), alpha=1)]
     node_scatter += [add_scatter(df[rows], label="", color=(0, 0, 0), alpha=0.0)]
+    edge_traces = []
+    weights = set()
+    df["weights"].apply(lambda x: [weights.add(v) for k, v in x.items()])
+    for weight in weights:
+        edge_x = []
+        edge_y = []
+        for edge in g.edges():
+            if g.get_edge_data(edge[0], edge[1])["weight"] != weight:
+                continue
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
 
-    edge_x = []
-    edge_y = []
-    for edge in g.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x.append(x0)
-        edge_x.append(x1)
-        edge_x.append(None)
-        edge_y.append(y0)
-        edge_y.append(y1)
-        edge_y.append(None)
-
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=1, color='#888'),
-        hoverinfo='none',
-        mode='lines',
-        name="Connections")
-    fig = go.Figure(data=[edge_trace] + node_scatter,
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=round(weight ** 0.75, 5), color='#888'),
+            hoverinfo="none",
+            mode='lines',
+            name=f"{weight} songs")
+        edge_traces.append(edge_trace)
+    fig = go.Figure(data=edge_traces + node_scatter,
                     layout=go.Layout(
                         showlegend=True,
                         hovermode='closest',
